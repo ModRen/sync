@@ -1953,6 +1953,28 @@ Channel.prototype.tryChat = function(user, data) {
     this.chainMessage(user, msg);
 }
 
+Channel.prototype.tryPrivMsg = function(user, data) {
+    if(user.name == "") {
+        return;
+    }
+
+    if(!this.hasPermission(user, "chat"))
+        return;
+
+    if(typeof data.msg !== "string") {
+        return;
+    }
+
+    var msg = data.msg;
+    if(msg.length > 240) {
+        msg = msg.substring(0, 240);
+    }
+
+    this.chainMessage(user, msg, {
+        to: data.to
+    });
+}
+
 Channel.prototype.chainMessage = function(user, msg, data) {
     if(msg.indexOf("/") == 0)
         ChatCommand.handle(this, user, msg, data);
@@ -2001,6 +2023,16 @@ Channel.prototype.sendMessage = function(username, msg, msgclass, data) {
         for(var key in data) {
             msgobj[key] = data[key];
         }
+    }
+    if(data.to) {
+        delete msgobj["to"];
+        msgobj.source = username;
+        for(var i in this.users) {
+            if(this.users[i].name.toLowerCase() == data.to) {
+                this.users[i].socket.emit("chatMsg", msgobj);
+            }
+        }
+        return;
     }
     this.sendAll("chatMsg", msgobj);
     this.chatbuffer.push(msgobj);

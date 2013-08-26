@@ -111,6 +111,7 @@ $("#chatline").keydown(function(ev) {
                 msg = "/m " + msg;
             }
             socket.emit("chatMsg", {
+                to: MSG_TO,
                 msg: msg
             });
             CHATHIST.push($("#chatline").val());

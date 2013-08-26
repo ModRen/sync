@@ -20,7 +20,7 @@ html, body {
     color: #ffffff;
 }
 
-#usercountwrap, #userlist, #messagebuffer, #videowrap {
+#usercountwrap, #userlist, .msg-buffer, #videowrap {
     background-color: #ffffff;
 }
 
@@ -158,7 +158,7 @@ html, body {
     max-width: 200px;
 }
 
-#messagebuffer div, #messagebuffer code, #filteredit code,
+.msg-buffer div, .msg-buffer code, #filteredit code,
 #channeldata td, #currenttitle, .profile-box {
     white-space: pre-wrap; /* css-3 */
     white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
@@ -338,4 +338,11 @@ html, body {
 
 #sc_volume .ui-slider-handle {
     border-color: rgb(255, 195, 0);
+}
+
+.pm-active {
+    border: 1px solid #cccccc;
+    background-color: #e5e5e5;
+    border-left: none;
+    border-right: none;
 }

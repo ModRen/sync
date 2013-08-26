@@ -71,14 +71,14 @@ function findUserlistItem(name) {
             continue;
         }
         var child = children[i];
-        if($(child.children[1]).text().toLowerCase() == name)
+        if($(child.children[2]).text().toLowerCase() == name)
             return $(child);
     }
     return null;
 }
 
 function formatUserlistItem(div, data) {
-    var name = $(div.children()[1]);
+    var name = $(div.children()[2]);
     name.removeClass();
     name.css("font-style", "");
     name.addClass(getNameColor(data.rank));
@@ -107,7 +107,7 @@ function formatUserlistItem(div, data) {
         profile.remove();
     });
 
-    var flair = div.children()[0];
+    var flair = div.children()[1];
     flair.innerHTML = "";
     // denote current leader with a star
     if(data.leader) {
@@ -120,6 +120,22 @@ function formatUserlistItem(div, data) {
     if(data.meta && data.meta.icon) {
         $("<i/>").addClass(data.meta.icon).prependTo(flair);
     }
+
+    var unread = div.children()[0];
+    unread.innerHTML = "2";
+    div.click(function () {
+        unread.innerHTML = "";
+        if(div.data("active")) {
+            div.data("active", false);
+            div.removeClass("pm-active");
+            MSG_TO = "[server]";
+        } else {
+            console.log("load buffer", data.name);
+            div.addClass("pm-active");
+            div.data("active", true);
+            MSG_TO = data.name.toLowerCase();
+        }
+    });
 }
 
 function getNameColor(rank) {
@@ -880,7 +896,7 @@ function showPollMenu() {
 }
 
 function scrollChat() {
-    $("#messagebuffer").scrollTop($("#messagebuffer").prop("scrollHeight"));
+    MSGBUFFER.scrollTop(MSGBUFFER.prop("scrollHeight"));
 }
 
 function hasPermission(key) {
@@ -1361,11 +1377,30 @@ function addChatMessage(data) {
     if(IGNORED.indexOf(data.username) != -1) {
         return;
     }
+    var bufname = data.source || "[server]";
+    var buffer;
+    if(bufname in CHATBUFFERS) {
+        buffer = CHATBUFFERS[bufname];
+    } else {
+        buffer = $(".msg-buffer").appendTo($("#messagebuffer"));
+        CHATBUFFERS[bufname] = buffer;
+    }
+
+    if(bufname != MSG_TO) {
+        if(bufname !== "[server]") {
+            var user = findUserlistItem(bufname);
+            if(user !== null) {
+                var unread = user.children()[0];
+                var count = parseInt(unread.innerHTML) || 0;
+                user.children()[0].innerHTML = "" + (count + 1);
+            }
+        }
+    }
     var div = formatChatMessage(data);
     div.data("sender", data.username);
-    div.appendTo($("#messagebuffer"));
+    div.appendTo(buffer);
     div.mouseover(function() {
-        $("#messagebuffer").children().each(function() {
+        buffer.children().each(function() {
             var name = $(this).data("sender");
             if(name == data.username) {
                 $(this).addClass("nick-hover");
@@ -1373,13 +1408,13 @@ function addChatMessage(data) {
         });
     });
     div.mouseleave(function() {
-        $("#messagebuffer").children().each(function() {
+        buffer.children().each(function() {
             $(this).removeClass("nick-hover");
         });
     });
     // Cap chatbox at most recent 100 messages
-    if($("#messagebuffer").children().length > 100) {
-        $($("#messagebuffer").children()[0]).remove();
+    if(buffer.children().length > 100) {
+        $(buffer.children()[0]).remove();
     }
     if(SCROLLCHAT)
         scrollChat();

@@ -57,6 +57,11 @@ var socket = {
 var IGNORED = [];
 var CHATHIST = [];
 var CHATHISTIDX = 0;
+var MSGBUFFER = $("#mainmsgbuffer");
+var MSG_TO = "[server]";
+var CHATBUFFERS = {
+    "[server]": $("#mainmsgbuffer")
+};
 var SCROLLCHAT = true;
 var LASTCHATNAME = "";
 var LASTCHATTIME = 0;

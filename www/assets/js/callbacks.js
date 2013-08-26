@@ -60,8 +60,8 @@ Callbacks = {
         }
         $("<div/>").addClass("server-msg-reconnect")
             .text("Connected")
-            .appendTo($("#messagebuffer"));
-        $("#messagebuffer").scrollTop($("#messagebuffer").prop("scrollHeight"));
+            .appendTo($("#mainmsgbuffer"));
+        scrollChat();
     },
 
     disconnect: function() {
@@ -70,7 +70,7 @@ Callbacks = {
         $("<div/>")
             .addClass("server-msg-disconnect")
             .text("Disconnected from server.  Attempting reconnection...")
-            .appendTo($("#messagebuffer"));
+            .appendTo($("#mainmsgbuffer"));
         scrollChat();
     },
 
@@ -115,7 +115,7 @@ Callbacks = {
         KICKED = true;
         $("<div/>").addClass("server-msg-disconnect")
             .text("Kicked: " + data.reason)
-            .appendTo($("#messagebuffer"));
+            .appendTo($("#mainmsgbuffer"));
         scrollChat();
     },
 
@@ -123,7 +123,7 @@ Callbacks = {
         $("<div/>")
             .addClass("server-msg-disconnect")
             .text(data.action + ": " + data.msg)
-            .appendTo($("#messagebuffer"));
+            .appendTo($("#mainmsgbuffer"));
         scrollChat();
     },
 
@@ -641,7 +641,7 @@ Callbacks = {
     },
 
     clearchat: function() {
-        $("#messagebuffer").html("");
+        $("#mainmsgbuffer").html("");
     },
 
     userlist: function(data) {
@@ -658,6 +658,7 @@ Callbacks = {
             user.remove();
         var div = $("<div/>")
             .addClass("userlist_item");
+        var unread = $("<span/>").addClass("badge").appendTo(div);
         var flair = $("<span/>").appendTo(div);
         var nametag = $("<span/>").text(data.name).appendTo(div);
         formatUserlistItem(div, data);
@@ -699,11 +700,11 @@ Callbacks = {
         if(user === null)
             return;
         user.find(".icon-time").remove();
-        $(user[0].children[1]).css("font-style", "");
+        $(user[0].children[2]).css("font-style", "");
         if(data.afk) {
             $("<i/>").addClass("icon-time")
-                .appendTo(user[0].children[0]);
-            $(user[0].children[1]).css("font-style", "italic");
+                .appendTo(user[0].children[1]);
+            $(user[0].children[2]).css("font-style", "italic");
         }
         if(USEROPTS.sort_afk)
             sortUserlist();
@@ -970,7 +971,7 @@ Callbacks = {
         Callbacks.closePoll();
         var pollMsg = $("<div/>").addClass("poll-notify")
             .text(data.initiator + " opened a poll: \"" + data.title + "\"")
-            .appendTo($("#messagebuffer"));
+            .appendTo($("#mainmsgbuffer"));
         scrollChat();
 
         var poll = $("<div/>").addClass("well active").prependTo($("#pollwrap"));

@@ -213,6 +213,12 @@ User.prototype.initCallbacks = function() {
         }
     });
 
+    self.socket.on("privMsg", function (data) {
+        if(self.channel !== null) {
+            self.channel.tryPrivMsg(self, data);
+        }
+    });
+
     self.socket.on("newPoll", function(data) {
         if(self.channel != null) {
             self.channel.tryOpenPoll(self, data);
