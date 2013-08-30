@@ -248,6 +248,8 @@ User.prototype.login = function (name, pw, session) {
             session: row.session_hash,
             name: name
         });
+        self.name = name;
+        self.canonicalName = self.name.toLowerCase();
 
         Logger.syslog.log(self.ip + " logged in as " + name);
         self.server.db.recordVisit(self.ip, name);
@@ -308,4 +310,23 @@ User.prototype.guestLogin = function (name) {
             });
             return;
         }
+
+        lastguestlogin[self.ip] = Date.now();
+        self.rank = self.global_rank = 0;
+        Logger.syslog.log(self.ip + " signed in as " + name + " (guest)");
+        self.server.db.recordVisit(self.ip, name);
+
+        self.name = name;
+        self.canonicalName = self.name.toLowerCase();
+        self.loggedIn = true;
+        self.registered = false;
+
+        self.send("login", {
+            success: true,
+            name: name
+        });
+
+        self.send("rank", 0);
+        if (self.channel !== null)
+            self.channel.handleLogin(self);
     });

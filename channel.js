@@ -727,6 +727,24 @@ Channel.prototype.search = function(query, callback) {
 
 /* REGION User interaction */
 
+Channel.prototype.handleLogin = function (user) {
+    var self = this;
+    for(var i = 0; i < this.users.length; i++) {
+        if (this.users[i].canonicalName === user.canonicalName) {
+            this.users[i].kick("Duplicate login");
+            break;
+        }
+    }
+
+    this.getRank(user.name, function (err, rank) {
+        if (!err) {
+            user.rank = rank;
+            user.send("rank", rank);
+            self.broadcastNewUser(user);
+        }
+    });
+};
+
 Channel.prototype.userJoin = function(user) {
     var parts = user.ip.split(".");
     var slash24 = parts[0] + "." + parts[1] + "." + parts[2];
