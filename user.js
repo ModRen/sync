@@ -330,3 +330,4 @@ User.prototype.guestLogin = function (name) {
         if (self.channel !== null)
             self.channel.handleLogin(self);
     });
+};

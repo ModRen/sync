@@ -736,13 +736,76 @@ Channel.prototype.handleLogin = function (user) {
         }
     }
 
-    this.getRank(user.name, function (err, rank) {
-        if (!err) {
-            user.rank = rank;
-            user.send("rank", rank);
-            self.broadcastNewUser(user);
-        }
-    });
+    var afterRank = function () {
+        self.server.db.listAliases(user.ip, function (err, aliases) {
+            if (err) {
+                aliases = [];
+            }
+
+            self.ip_alias[user.ip] = aliases;
+            aliases.forEach(function (alias) {
+                self.name_alias[alias] = aliases;
+            });
+
+            self.login_hist.unshift({
+                name: user.anme,
+                aliases: aliases,
+                time: Date.now()
+            });
+
+            if (self.login_hist.length > 20)
+                self.login_hist.pop();
+
+            if (self.namebans[user.canonicalName]) {
+                user.kick("You're banned!");
+                return;
+            }
+
+            self.sendAll("addUser", {
+                name: user.name,
+                rank: user.rank,
+                leader: false,
+                meta: {
+                    icon: user.icon,
+                    afk: user.afk
+                },
+                profile: user.profile
+            });
+
+            if (user.rank > 0) {
+                self.saveRank(user);
+            }
+
+            var msg = user.name + " joined (aliases: ";
+            msg += aliases.join(", ") + ")";
+            var pkt = {
+                username: "[server]",
+                msg: msg,
+                msgclass: "server-whisper",
+                time: Date.now()
+            };
+
+            self.users.forEach(function (u) {
+                if (u.isModerator())
+                    u.send("joinMessage", pkt);
+            });
+        });
+    };
+
+    if (self.dbloaded && self.users.length == 0 && !self.registered) {
+        user.rank = (user.rank < 10 ? 10 : user.rank;
+        user.send("rank", user.rank);
+        user.send("channelNotRegistered");
+        afterRank();
+    } else if (user.registered) {
+        self.getRank(user.name, function (err, rank) {
+            if (!err) {
+                user.rank = rank;
+                user.send("rank", rank);
+                afterRank();
+            }
+        });
+    }
 };
 
 Channel.prototype.userJoin = function(user) {
