@@ -154,8 +154,8 @@ Channel.prototype.loadDump = function() {
                 Logger.errlog.log("Large chandump detected: " + self.name +
                                   " (" + mb + " MB)");
                 self.updateMotd("Your channel file has exceeded the " +
-                                "maximum size of 1MB and cannot be " + 
-                                "loaded.  Please ask an administrator " + 
+                                "maximum size of 1MB and cannot be " +
+                                "loaded.  Please ask an administrator " +
                                 "for assistance in restoring it.");
                 return;
             }
@@ -398,7 +398,7 @@ Channel.prototype.tryRegister = function (user) {
                 return;
             }
 
-            self.server.actionlog.record(user.ip, user.name, 
+            self.server.actionlog.record(user.ip, user.name,
                              "channel-register-success", self.name);
             self.registered = true;
             self.initialized = true;
@@ -438,7 +438,7 @@ Channel.prototype.unregister = function (user) {
             });
             return;
         }
-        
+
         self.registered = false;
         user.socket.emit("unregisterChannel", { success: true });
     });
@@ -636,7 +636,7 @@ Channel.prototype.tryIPBan = function(actor, name, range) {
                 }
 
                 self.ipbans[ip] = [name, actor.name];
-                self.logger.log("*** " + actor.name + " banned " + ip + 
+                self.logger.log("*** " + actor.name + " banned " + ip +
                                 " (" + name + ")");
 
                 for(var i = 0; i < self.users.length; i++) {
@@ -806,6 +806,118 @@ Channel.prototype.handleLogin = function (user) {
             }
         });
     }
+};
+
+Channel.prototype.registerCallbacks = function (user) {
+    var self = this;
+
+    user.socket.on("assignLeader", function (data) {
+        if (!user.isModerator())
+            return;
+
+        if (typeof data.name !== "string")
+            return;
+
+        self.changeLeader(data.name);
+        self.logger.log("### " + user.name + " assigned leader to " + data.name);
+    });
+
+    user.socket.on("setChannelRank", function (data) {
+        if (!user.isChannelAdmin())
+            return;
+
+        if (typeof data.user !== "string" || typeof data.rank !== "number")
+            return;
+
+        if (data.rank >= user.rank || data.rank < 1)
+            return;
+
+        self.changeRank(user, data);
+    });
+
+    user.socket.on("unban", function (data) {
+        if (!self.hasPermission(user, "ban"))
+            return;
+
+        if (data.ip_hidden) {
+            var ip = self.hideIP(data.ip_hidden);
+            self.unbanIP(user, ip);
+        }
+
+        if (data.name) {
+            self.unbanName(user, data.name);
+        }
+    });
+
+    user.socket.on("chatMsg", function (data) {
+        if (data.msg.indexOf("/afk") != 0) {
+            user.setAFK(false);
+            user.autoAFK();
+        }
+
+        if (!user.loggedIn)
+            return;
+
+        if (!self.hasPermission(user, "chat"))
+            return;
+
+        // TODO replace with a list of muted people
+        if (user.muted) {
+            user.send("noflood", {
+                action: "chat",
+                msg: "You have been muted on this channel."
+            });
+            return;
+        }
+
+        if (typeof data.msg !== "string")
+            return;
+
+        var msg = data.msg;
+        if (msg.length > 240)
+            msg = msg.substring(0, 240);
+        }
+
+        if (self.opts.chat_antiflood) {
+            var opts = {
+                burst: 3,
+                sustained: 1
+            };
+
+            if (user.chatLimiter.throttle(opts)) {
+                user.send("noflood", {
+                    action: chat,
+                    msg: "You're sending messages too quickly."
+                });
+                return;
+            }
+        }
+
+        self.chainMessage(user, msg);
+    });
+
+    user.socket.on("newPoll", function (data) {
+        if (!self.hasPermission(user, "pollctl"))
+            return;
+
+        if (typeof data.title !== "string")
+            return;
+
+        if (typeof data.opts !== "object")
+            return;
+
+        self.poll = new Poll(user.name, data.title, data.opts);
+        self.broadcastPoll();
+        self.logger.log("*** "+user.name+" opened poll: '"+poll.title+"'");
+    });
+
+    user.socket.on("playerReady", function () {
+        self.sendMediaUpdate(user);
+    });
+
+    user.socket.on("requestPlaylist", function () {
+        self.sendPlaylist(user);
+    });
 };
 
 Channel.prototype.userJoin = function(user) {
@@ -1339,7 +1451,7 @@ Channel.prototype.tryQueue = function(user, data) {
 
 Channel.prototype.addMedia = function(data, user) {
     var self = this;
-    if(data.type === "yp" && 
+    if(data.type === "yp" &&
        !self.hasPermission(user, "playlistaddlist")) {
         user.socket.emit("queueFail", "You don't have permission to add " +
                          "playlists");
@@ -1556,7 +1668,7 @@ Channel.prototype.tryDequeue = function(user, data) {
 
     if(typeof data !== "number")
         return;
-    
+
     var plitem = this.playlist.items.find(data);
     if(plitem && plitem.media)
         this.logger.log("### " + user.name + " deleted " + plitem.media.title);
@@ -1576,7 +1688,7 @@ Channel.prototype.tryUncache = function(user, data) {
         if(err)
             return;
 
-        self.logger.log("*** " + user.name + " deleted " + data.id + 
+        self.logger.log("*** " + user.name + " deleted " + data.id +
                         " from library");
     });
 }
@@ -1687,12 +1799,12 @@ Channel.prototype.move = function(data, user) {
         if(typeof data.moveby !== "undefined")
             moveby = data.moveby;
 
-        
+
         var fromit = chan.playlist.items.find(data.from);
         var afterit = chan.playlist.items.find(data.after);
         var aftertitle = afterit && afterit.media ? afterit.media.title : "";
         if(fromit) {
-            chan.logger.log("### " + user.name + " moved " + fromit.media.title 
+            chan.logger.log("### " + user.name + " moved " + fromit.media.title
                           + (aftertitle ? " after " + aftertitle : ""));
         }
 
@@ -2134,7 +2246,7 @@ Channel.prototype.trySetRank = function(user, data) {
         receiver.rank = data.rank;
         if(receiver.loggedIn) {
             self.saveRank(receiver, function (err, res) {
-                self.logger.log("*** " + user.name + " set " + 
+                self.logger.log("*** " + user.name + " set " +
                                 data.user + "'s rank to " + data.rank);
                 self.sendAllWithPermission("acl", "setChannelRank", data);
             });
@@ -2148,8 +2260,8 @@ Channel.prototype.trySetRank = function(user, data) {
                 return;
             self.server.db.setChannelRank(self.name, data.user,
                                           data.rank, function (err, res) {
-            
-                self.logger.log("*** " + user.name + " set " + 
+
+                self.logger.log("*** " + user.name + " set " +
                                 data.user + "'s rank to " + data.rank);
                 self.sendAllWithPermission("acl", "setChannelRank", data);
             });
