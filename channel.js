@@ -918,6 +918,101 @@ Channel.prototype.registerCallbacks = function (user) {
     user.socket.on("requestPlaylist", function () {
         self.sendPlaylist(user);
     });
+
+    user.socket.on("queue", function () {
+        if (!self.hasPermission(user, "playlistadd"))
+            return;
+
+        if (typeof data.pos !== "string")
+            return;
+
+        if (typeof data.id !== "string" && data.id !== false)
+            return;
+
+        if (typeof data.title !== "string")
+            data.title = false;
+
+        if (data.pos == "next" && !self.hasPermission(user, "playlistnext"))
+            return;
+
+        var limit = {
+            burst: 3,
+            sustained: 1
+        };
+
+        if (user.isModerator() || self.leader == user) {
+            limit = {
+                burst: 10,
+                sustained: 2
+            };
+        }
+
+        if (user.queueLimiter.throttle(limit)) {
+            user.send("queueFail", "You are adding videos too quickly");
+            return;
+        }
+
+        data.queueby = user.name;
+        data.temp = !self.hasPermission(user, "addnontemp");
+
+        if (data.list)
+            self.addMediaList(data, user);
+        else
+            self.addMedia(data, user);
+    });
+
+    user.socket.on("setTemp", function (data) {
+        if (!self.hasPermission(user, "settemp"))
+            return;
+
+        if (typeof data.uid !== "number" || typeof data.temp !== "boolean")
+            return;
+
+        self.setTemp(data.uid, data.temp);
+    });
+
+    user.socket.on("delete", function (data) {
+        if (!self.hasPermission(user, "playlistdelete"))
+            return;
+
+        if (typeof data !== "number")
+            return;
+
+        var pli = self.playlist.items.find(data);
+        if (pli && pli.media)
+            self.logger.log("### "+user.name+" deleted "+pli.media.title);
+
+        self.dequeue(data);
+    });
+
+    user.socket.on("uncache", function (data) {
+        if (!user.isModerator())
+            return;
+
+        if (typeof data.id !== "string")
+            return;
+
+        self.server.db.removeFromLibrary(self.name, data.id,
+                                         function (err, res) {
+
+            if (!err)
+                self.logger.log("*** "+user.name+" deleted "+data.id+" from "+
+                                "library");
+        });
+    });
+
+    user.socket.on("moveMedia", function (data) {
+        if (!self.hasPermission(user, "playlistmove"))
+            return;
+
+        if (typeof data.from !== "number")
+            return;
+
+        if (typeof data.after !== "number" && typeof data.after !== "string")
+            return;
+
+        self.move(data, user);
+    });
 };
 
 Channel.prototype.userJoin = function(user) {
